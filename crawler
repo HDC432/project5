@@ -3,32 +3,136 @@
 import argparse
 import socket
 import ssl
+import re
 
-DEFAULT_SERVER = "proj5.3700.network"
+DEFAULT_SERVER = "fakebook.khoury.northeastern.edu"
 DEFAULT_PORT = 443
 
 class Crawler:
     def __init__(self, args):
-        self.server = args.server
-        self.port = args.port
+        self.server = args.server if args.server else DEFAULT_SERVER
+        self.port = args.port if args.port else DEFAULT_PORT
         self.username = args.username
         self.password = args.password
+        self.cookies = {}
 
-    def run(self):
-        request = "GET / HTTP/1.1\r\nHost: {}\r\nUser-Agent: Crawler/1.0\r\nConnection: close\r\n\r\n".format(self.server)
 
-        print("Request to %s:%d" % (self.server, self.port))
-        print(request)
+    def set_cookie(self, headers_text):
+        cookie_headers = [line for line in headers_text.splitlines() if line.lower().startswith("set-cookie:")]
+        for header in cookie_headers:
+            cookie_str = header.split(':', 1)[1].strip()
+            cookie_parts = cookie_str.split(';')[0].strip().split('=', 1)
+            if len(cookie_parts) == 2:
+                name, value = cookie_parts
+                self.cookies[name] = value
+                print(f"Set cookie: {name}={value}")
+
+
+    def get_csrf_token(self):
+        login_page_request = f"GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: {self.server}\r\nUser-Agent: Crawler/1.0\r\nConnection: close\r\n\r\n"
+
         new_socket = socket.create_connection((self.server, self.port))
         ssl_context = ssl.create_default_context()
-
         mysocket = ssl_context.wrap_socket(new_socket, server_hostname=self.server)
-        mysocket.send(request.encode('ascii'))
+        mysocket.send(login_page_request.encode('ascii'))
 
-        data = mysocket.recv(1000)
-        print("Response:\n%s" % data.decode('ascii'))
-
+        response_data = b""
+        while True:
+            data = mysocket.recv(4096)
+            if not data:
+                break
+            response_data += data
         mysocket.close()
+
+        response_text = response_data.decode('ascii', errors='ignore')
+
+        self.set_cookie(response_text)
+
+        csrf_token_match = re.search(r'name="csrfmiddlewaretoken" value="(.+?)"', response_text)
+        csrf_token = csrf_token_match.group(1) if csrf_token_match else None
+        print("CSRF Token:", csrf_token)
+
+        for line in response_text.splitlines():
+            if line.startswith("Set-Cookie:"):
+                cookie_value = line.split(":", 1)[1].strip().split(";")[0]
+                match = re.match(r"([^=]+)=([^;]+)", cookie_value)
+                if match:
+                    key, value = match.groups()
+                    self.cookies[key] = value
+
+        if not csrf_token:
+            print("Warning: CSRF token not found in response.")
+            return None
+
+        print("Cookies stored:", self.cookies)
+
+        return csrf_token
+
+
+    def login(self):
+        csrf_token = self.get_csrf_token()
+        if not csrf_token:
+            print("Failed to retrieve CSRF token.")
+            return False
+
+        if 'csrftoken' not in self.cookies:
+            print("Missing csrftoken cookie.")
+            return False
+
+        login_data = (
+            f"username={self.username}"
+            f"&password={self.password}"
+            f"&csrfmiddlewaretoken={csrf_token}"
+            f"&next=/fakebook/"
+        )
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": f"https://{self.server}/accounts/login/?next=/fakebook/",
+            "Cookie": "; ".join([f"{k}={v}" for k, v in self.cookies.items()]),
+            "User-Agent": "Crawler/1.0",
+            "Host": self.server,
+            "Connection": "keep-alive"
+        }
+
+        login_request = f"POST /accounts/login/ HTTP/1.1\r\nHost: {self.server}\r\n"
+        for header, value in headers.items():
+            login_request += f"{header}: {value}\r\n"
+        login_request += f"Content-Length: {len(login_data)}\r\n"
+        login_request += "Connection: close\r\n\r\n"
+        login_request += login_data
+
+        print("Login Request:\n", login_request)
+
+        new_socket = socket.create_connection((self.server, self.port))
+        ssl_context = ssl.create_default_context()
+        mysocket = ssl_context.wrap_socket(new_socket, server_hostname=self.server)
+        mysocket.send(login_request.encode('ascii'))
+
+        response_data = b""
+        while True:
+            data = mysocket.recv(4096)
+            if not data:
+                break
+            response_data += data
+        mysocket.close()
+
+        response_text = response_data.decode('ascii', errors='ignore')
+        self.set_cookie(response_text)
+
+        if "sessionid" in response_text:
+            print("Login successful!")
+            return True
+        else:
+            print("Login failed.")
+            return False
+
+
+    def run(self):
+        if not self.login():
+            print("Exiting due to login failure.")
+            return
+        print("Login successful! Ready to start crawling!")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='crawl Fakebook')
