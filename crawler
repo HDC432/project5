@@ -17,7 +17,7 @@ class Crawler:
         self.cookies = {}
 
 
-    def set_cookie(self, headers_text):
+    def handle_cookie(self, headers_text):
         cookie_headers = [line for line in headers_text.splitlines() if line.lower().startswith("set-cookie:")]
         for header in cookie_headers:
             cookie_str = header.split(':', 1)[1].strip()
@@ -46,7 +46,7 @@ class Crawler:
 
         response_text = response_data.decode('ascii', errors='ignore')
 
-        self.set_cookie(response_text)
+        self.handle_cookie(response_text)
 
         csrf_token_match = re.search(r'name="csrfmiddlewaretoken" value="(.+?)"', response_text)
         csrf_token = csrf_token_match.group(1) if csrf_token_match else None
@@ -118,7 +118,7 @@ class Crawler:
         mysocket.close()
 
         response_text = response_data.decode('ascii', errors='ignore')
-        self.set_cookie(response_text)
+        self.handle_cookie(response_text)
 
         if "sessionid" in response_text:
             print("Login successful!")
