@@ -26,9 +26,7 @@ class CrawlerHTMLParser(HTMLParser):
 
     def handle_data(self, data):
         if (self.recordingflag):
-            print(data)
-        if (re.search("FLAG",data)):
-            print(data)
+            print(data.split(":")[1].strip())
 
             
 
@@ -47,7 +45,7 @@ class HttpCrawler:
         return page_request
 
     def getPage(self, url):
-        if (not self.socket or self.ssl_context):
+        if ((not self.socket) or (not self.ssl_context)):
             new_socket = socket.create_connection((self.server, self.port))
             self.ssl_context = ssl.create_default_context()
             self.socket = self.ssl_context.wrap_socket(new_socket, server_hostname=self.server)
@@ -72,25 +70,25 @@ class HttpCrawler:
                     content_length = int(size_header.split(":")[1].strip())
             if response_code == 0:
                 matched = re.search(r'HTTP/1.1 [0-9]+ ',response_data)
-                response_code = int(matched.group(0).split(" ")[1])
+                if matched:
+                    response_code = int(matched.group(0).split(" ")[1])
 
         if (response_code == 302):
             matched = re.search(r'location: .+\r\n', response_data)
             return [matched.group(0).split(":")[1].strip()], response_code
         parser = CrawlerHTMLParser()
         parser.feed(response_data)
-        return parser.links, response_code
+        return  parser.links, response_code
     def crawl(self):
         visited = set()
         visited.add("/")
-        visited.add("/accounts/logout")
+        visited.add("/accounts/logout/")
         stack  = ["/fakebook/"]
         while (len(stack) > 0):
             nextlink = stack.pop()
             if (nextlink[0] != "/"):
                 print(nextlink)
             if nextlink not in visited:
-                # print("Crawling: ", nextlink)
                 
                 links, response_code = self.getPage(nextlink)
                 if (response_code == 503):
