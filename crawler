@@ -27,7 +27,7 @@ class Crawler:
             if len(cookie_parts) == 2:
                 name, value = cookie_parts
                 self.cookies[name] = value
-                print(f"Set cookie: {name}={value}")
+                # print(f"Set cookie: {name}={value}")
 
 
     def get_csrf_token(self):
@@ -52,7 +52,7 @@ class Crawler:
 
         csrf_token_match = re.search(r'name="csrfmiddlewaretoken" value="(.+?)"', response_text)
         csrf_token = csrf_token_match.group(1) if csrf_token_match else None
-        print("CSRF Token:", csrf_token)
+        # print("CSRF Token:", csrf_token)
 
         for line in response_text.splitlines():
             if line.startswith("Set-Cookie:"):
@@ -66,7 +66,7 @@ class Crawler:
             print("Warning: CSRF token not found in response.")
             return None
 
-        print("Cookies stored:", self.cookies)
+        # print("Cookies stored:", self.cookies)
 
         return csrf_token
 
@@ -104,7 +104,7 @@ class Crawler:
         login_request += "Connection: close\r\n\r\n"
         login_request += login_data
 
-        print("Login Request:\n", login_request)
+        # print("Login Request:\n", login_request)
 
         new_socket = socket.create_connection((self.server, self.port))
         ssl_context = ssl.create_default_context()
@@ -123,7 +123,7 @@ class Crawler:
         self.handle_cookie(response_text)
 
         if "sessionid" in response_text:
-            print("Login successful!")
+            # print("Login successful!")
             return True
         else:
             print("Login failed.")
@@ -134,7 +134,7 @@ class Crawler:
         if not self.login():
             print("Exiting due to login failure.")
             return
-        print("Login successful! Ready to start crawling!")
+        # print("Login successful! Ready to start crawling!")
 
         httpCrawler = HttpCrawler(self.server, self.port, self.cookies)
         httpCrawler.crawl()
