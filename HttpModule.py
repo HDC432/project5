@@ -3,14 +3,18 @@ import ssl
 import re
 from html.parser import HTMLParser
 
-class CrawlerHTMLParser(HTMLParser):
 
+# Class to extract links and secret flags
+class CrawlerHTMLParser(HTMLParser):
+    # Initialize HTMLParser, set up a list to store links
     def __init__(self):
         HTMLParser.__init__(self)
         self.links = []
         self.flag = None
         self.recordingflag = False
 
+
+    # Handle a start tag
     def handle_starttag(self, tag, attrs):
         if (tag == 'a'):
             for (property, value) in attrs:
@@ -20,17 +24,21 @@ class CrawlerHTMLParser(HTMLParser):
             for (property, value) in attrs:
                 if (property == 'class' and value == "secret_flag"):
                     self.recordingflag = True
+
+    
+    # Handle an end tag
     def handle_endtag(self, tag):
         if (tag == "h3"):
             self.recordingflag = False
 
+
+    # Process data if a secret flag is found
     def handle_data(self, data):
         if (self.recordingflag):
             print(data.split(":")[1].strip())
 
-            
 
-
+# Class Http Crawler that connects to a server, sends requests, and extracts links
 class HttpCrawler:
     def __init__(self, server, port, cookie):
         self.server = server
@@ -39,11 +47,15 @@ class HttpCrawler:
         self.ssl_context = None
         self.cookie = cookie
 
+
+    # Construct an HTTP GET request
     def getRequest(self, url):
         cookies = "; ".join([f"{k}={v}" for k, v in self.cookie.items()])
         page_request = f"GET {url} HTTP/1.1\r\nHost: {self.server}\r\nUser-Agent: Crawler/1.0\r\nCookie: {cookies}\r\nConnection: Keep-Alive\r\nContent-Length: 0\r\n\r\n"
         return page_request
 
+
+    # Send request to server and process response data
     def getPage(self, url):
         if ((not self.socket) or (not self.ssl_context)):
             new_socket = socket.create_connection((self.server, self.port))
@@ -58,7 +70,6 @@ class HttpCrawler:
         while data_received < content_length:
             data = self.socket.recv()
             data_received += len(data)
-
             
             if not data:
                 break
@@ -72,13 +83,16 @@ class HttpCrawler:
                 matched = re.search(r'HTTP/1.1 [0-9]+ ',response_data)
                 if matched:
                     response_code = int(matched.group(0).split(" ")[1])
-
+        # If response_code is 302, search the location to redirect to
         if (response_code == 302):
             matched = re.search(r'location: .+\r\n', response_data)
             return [matched.group(0).split(":")[1].strip()], response_code
         parser = CrawlerHTMLParser()
         parser.feed(response_data)
         return  parser.links, response_code
+    
+
+    # Handle the crawling process by a stack
     def crawl(self):
         visited = set()
         visited.add("/")
@@ -89,7 +103,6 @@ class HttpCrawler:
             if (nextlink[0] != "/"):
                 print(nextlink)
             if nextlink not in visited:
-                
                 links, response_code = self.getPage(nextlink)
                 if (response_code == 503):
                     stack.append(nextlink)
