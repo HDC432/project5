@@ -5,6 +5,8 @@ import socket
 import ssl
 import re
 
+from HttpModule import HttpCrawler
+
 DEFAULT_SERVER = "fakebook.khoury.northeastern.edu"
 DEFAULT_PORT = 443
 
@@ -133,6 +135,9 @@ class Crawler:
             print("Exiting due to login failure.")
             return
         print("Login successful! Ready to start crawling!")
+
+        httpCrawler = HttpCrawler(self.server, self.port, self.cookies)
+        httpCrawler.crawl()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='crawl Fakebook')
