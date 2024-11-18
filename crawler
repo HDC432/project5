@@ -12,7 +12,7 @@ DEFAULT_PORT = 443
 
 # Class to complete login, 
 class Crawler:
-    # Initialize Crawler with server, port, username, password and cookies map
+    # Initialize Crawler with server, port, username, password, set up a map to store cookies
     def __init__(self, args):
         self.server = args.server if args.server else DEFAULT_SERVER
         self.port = args.port if args.port else DEFAULT_PORT
@@ -21,7 +21,7 @@ class Crawler:
         self.cookies = {}
 
 
-    # Funtion to extract cookie and store it in self.cookies
+    # Extract cookie and store it in self.cookies
     def handle_cookie(self, headers_text):
         cookie_headers = [line for line in headers_text.splitlines() if line.lower().startswith("set-cookie:")]
         for header in cookie_headers:
@@ -32,7 +32,7 @@ class Crawler:
                 self.cookies[name] = value
 
 
-    # Function to send an HTTP request, process responses and handle cookies
+    # Send an HTTP request, process responses and handle cookies
     def send_request(self, request):
         # Create a socket connection
         new_socket = socket.create_connection((self.server, self.port))
@@ -56,7 +56,7 @@ class Crawler:
         return response_text
 
 
-    # Function to get csrf token to ensure login successfully
+    # Get csrf token to ensure login successfully
     def get_csrf_token(self):
         login_page_request = f"GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: {self.server}\r\nUser-Agent: Crawler/1.0\r\nConnection: close\r\n\r\n"
         response_text = self.send_request(login_page_request)

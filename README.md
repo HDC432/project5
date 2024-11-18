@@ -2,11 +2,13 @@
 
 ## Overall Strategy ##
 
-The code involves two major components, the HTTPS login module and the web crawler
+This project implements a web crawler designed to interact with a simulated social networking site called Fakebook. The crawler logs into the website, retrieves session cookies, and then crawls pages.
+
+The code involves two major components, the HTTPS login module and the web crawler.
 
 ### HTTPS Login ###
 
-The program first tries to get the CSRF token from the website by sending a POST login request with the close on end connection. Once a response is received, we try to extract the cookie from the set-cookie header. If here is no cookie, an error will be thrown. Once the cookie is received, the connection is closed and the cookie is stored
+The program first tries to get the CSRF token from the website by sending a POST login request with the close on end connection. The CSRF token is embedded in a hidden field within the HTML form on the page. Once a response is received, we try to extract the cookie from the Set-Cookie header. If here is no cookie, an error will be thrown. After successfully storing the necessary cookies and CSRF token, the program constructs a POST request with the user’s username, password and CSRF token to log in. Once the login is processed, the program checks for a sessionid cookie in the response to confirm successful authentication.
 
 ### Web Crawler ###
 
@@ -20,3 +22,5 @@ In the initial phase we used print statements to make sure the cookie was being 
 ## Challenges faced ##
 
 One of the challenges was to prevent the web crawler from logging itself out by accidentally by accessing the log out pages, so that was hard coded into the explored set. This was difficult to discover as the web crawler explored web pages at a very high rate. We figuired this out by observing that the web crawler was receiving logged out links towards the end, which were preceded by the visit to the logout page.
+
+Another challenge faced during the implementation was retrieving the csrfmiddlewaretoken, which is stored as a hidden field in the login page's HTML form. This hidden field is critical for validating the login request, as the server uses it to ensure that the request originates from the legitimate login page and not from an unauthorized source. By inspecting the page in a browser's developer tools, csrfmiddlewaretoken can be found in the the hidden \<input\> field of the  \<form\> structure.
